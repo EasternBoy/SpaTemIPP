@@ -1,4 +1,4 @@
-#Distributed informative path planning of multiple mobile robots for spatio-temporal mapping
+# Distributed informative path planning of multiple mobile robots for spatio-temporal mapping
 
 M = 6 robots with Guassian process regression <br>
 Data from Universidad-Loyola-ODS-Research-Group, Soil moisture and temperature data in agricultural soil. Mendeley Data, V1, doi:
