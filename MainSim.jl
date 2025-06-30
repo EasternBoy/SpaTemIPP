@@ -70,10 +70,8 @@ kernel = Masked(Mat12Iso(1., 0.), [3])*Masked(SE(1., 0.), [1, 2])
 mean   = MeanConst(Statistics.mean(gpData))
 
 # Create a ground-truth model from the data
-# GPtruth = GPE(spaTem, gpData, mean, kernel, -2.)
-
-# println("ExactGP Training time")
-# @time GaussianProcesses.optimize!(GPtruth, noisebounds = [-3., -1.])
+GPtruth = GPE(spaTem, gpData, mean, kernel, -2.)
+@time GaussianProcesses.optimize!(GPtruth, noisebounds = [-3., -1.])
 
 
 
@@ -98,7 +96,7 @@ for (index,t) in enumerate(timeScale)
     temp     = reshape(vectemp, testSize[1], testSize[2])'
     Fig0 = heatmap(X, Y,  temp, c = :turbo, tickfontsize = 14, xlims = (x_min,x_max), ylims = (y_min,y_max), 
                     size=(600,300), clims = (minimum(GPtruth.y), maximum(GPtruth.y)), rightmargin=5Plots.mm)
-    png(Fig0, "GroudTruth at $t h")
+    png(Fig0, "Figs/GroundTruth$t-h")
 end
 
 
@@ -141,7 +139,7 @@ for k in 1:L
     pserSet = pserCon(robo)
 
     Fig, RMSE[k], var[k] = myPlot(robo, mGP, GPtruth, k*τ, NB, color)
-    png(Fig, "Fig-5robots/step $k"); display(Fig)
+    png(Fig, string("Figs/step",k)); display(Fig)
 
     # Execute PxADMM
     @time Pred, ResE[:,:,k] = dstbProxADLADIN!(robo, Pred, NB, pserSet, mGP, k*τ; MAX_ITER = MAX_ITER)
@@ -153,5 +151,3 @@ for k in 1:L
         robo[i].meas = measure!([robo[i].posn; robo[i].time], GPtruth)
     end
 end
-
-# plot(collect(1:L),var)
