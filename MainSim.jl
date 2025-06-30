@@ -96,7 +96,7 @@ for (index,t) in enumerate(timeScale)
     temp     = reshape(vectemp, testSize[1], testSize[2])'
     Fig0 = heatmap(X, Y,  temp, c = :turbo, tickfontsize = 14, xlims = (x_min,x_max), ylims = (y_min,y_max), 
                     size=(600,300), clims = (minimum(GPtruth.y), maximum(GPtruth.y)), rightmargin=5Plots.mm)
-    png(Fig0, "Figs/GroundTruth$t-h")
+    png(Fig0, string("Figs/GroundTruth_step",Int(t/τ)))
 end
 
 
