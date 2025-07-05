@@ -7,14 +7,13 @@ function pserCon(robo::Vector{robot})
 
     for i in 1:M
         for j in nearB[i]
-            S = []; flag = true
-            if checkConδ(robo[i], robo[j]) < 0
+            flag = true
+            # if checkConδ(robo[i], robo[j]) < 0
                 pi = robo[i].posn
                 pj = robo[j].posn
                 for k in nearB[i] 
                     if k != j
                         if checkCon(robo[k], robo[j]) >= 0
-                            # S = [S; k]
                             pk = robo[k].posn
                             if norm(pk-pi) < norm(pj-pi) && norm(pk-pj) < norm(pj-pi)
                                 flag = false #Ignore j
@@ -28,7 +27,7 @@ function pserCon(robo::Vector{robot})
                 if flag
                     pserR[i] = [pserR[i]; j] 
                 end
-            end
+            # end
         end
     end
 
@@ -59,9 +58,11 @@ function checkCon(rb1::robot, rb2::robot)
     return min(rb1.R, rb2.R) - norm(rb1.posn - rb2.posn)
 end
 
-function checkConδ(rb1::robot, rb2::robot)
-    return min(rb1.R, rb2.R) - norm(rb1.posn - rb2.posn) - rb1.pBnd.s_max - rb2.pBnd.s_max
-end
+# function checkConδ(rb1::robot, rb2::robot)
+#     τ = rb1.τ
+#     u_max = rb1.pBnd.u_max[1]
+#     return min(rb1.R, rb2.R) - norm(rb1.posn - rb2.posn) - 2*u_max*τ*10
+# end
 
 
 
@@ -92,42 +93,48 @@ function myPlot(robo::Vector{robot}, mGP::Vector{GPBase}, GPtruth::GPBase, time:
 
     var = [myGP_predict(mGP[1], reshape(testpoints[i,:],(:,1)))[2][1] for i in 1:size(testpoints)[1]]
 
-    testSize = [50, 50]
+    testsizeX = 70
+    testsizeY = 35
     M     = length(robo)
     x_min = robo[1].pBnd.x_min; x_max = robo[1].pBnd.x_max
     y_min = robo[1].pBnd.y_min; y_max = robo[1].pBnd.y_max
 
 
-    PreMat   = zeros(3,testSize[1]*testSize[2])
-    hor_gr   = range(x_min, x_max, length = testSize[1])
-    ver_gr   = range(y_min, y_max, length = testSize[2])
+    PreMat  = zeros(3, testsizeX*testsizeY)
+    X       = Vector(range(0,   stop = 100, length = testsizeX))
+    Y       = Vector(range(-15, stop = 5,   length = testsizeY))
     
     count = 1
-    for x in hor_gr, y in ver_gr
-        PreMat[:,count] = [x, y, time]
-        count = count+1
+    for i in X
+        for j in Y
+            PreMat[:,count] = [i,j,time]
+            count = count+1
+        end
     end
 
     
     RMSE      = zeros(M)
     vecTruth  = myGP_predict(GPtruth, PreMat)[1]
-    vecTemEst = []
     numP      = length(vecTruth)
 
     vecTemEst = myGP_predict(mGP[1], PreMat)[1] # take prediction of one vehicle
     RMSE      = sqrt((vecTruth-vecTemEst)'*(vecTruth-vecTemEst)/numP)
 
-    TemEst = reshape(vecTemEst, testSize[1], testSize[2])'
+    TemEst = reshape(vecTemEst, (testsizeY,testsizeX))
     # gr(size=(600,300))
-    Fig    = heatmap(hor_gr, ver_gr, TemEst, c = :turbo, xlims = (x_min,x_max), ylims = (y_min,y_max), tickfontsize = 14, 
-                    size=(600,300), clims = (minimum(GPtruth.y), maximum(GPtruth.y)), rightmargin=5Plots.mm)
-
+    Fig    = heatmap(X, Y, TemEst, c = :turbo, xlims = (x_min,x_max), ylims = (y_min,y_max), tickfontsize = 14, 
+                    size=(600,250), clims = (minimum(GPtruth.y)-2, maximum(GPtruth.y)), rightmargin=5Plots.mm)
+    net = zeros(M,M)
     for i = 1:M
-        plot!([robo[i].posn[1]], [robo[i].posn[2]], markershape = :circle, linewidth=3, markersize=3, markercolor=color[i], label="")
+        plot!([robo[i].posn[1]], [robo[i].posn[2]], markershape = :circle, linewidth=3, markersize=3, 
+                markercolor=color[i], label="")
         for j = NB[i]
-            Xp = [robo[i].posn[1], robo[j].posn[1]]
-            Yp = [robo[i].posn[2], robo[j].posn[2]]
-            plot!(Xp, Yp, label="")
+            if net[i,j] == 0
+                net[i,j] = net[j,i] = 1
+                Xp = [robo[i].posn[1], robo[j].posn[1]]
+                Yp = [robo[i].posn[2], robo[j].posn[2]]
+                plot!(Xp, Yp, label="", linestyle = :dash)
+            end
         end
     end
 
@@ -155,9 +162,8 @@ function init_position(pBnd::polyBound, R::Float64, r::Float64, M::Int64)
     x_max = pBnd.x_max
     y_min = pBnd.y_min
     y_max = pBnd.y_max
-    s_max = pBnd.s_max
     while true
-        s = [rand(Uniform(x_min+r, x_max/4-r), 1, M); rand(Uniform(y_min+r, y_max-r), 1, M)]
+        s = [rand(Uniform(x_min+r, x_max/3-r), 1, M); rand(Uniform(y_min+r, y_max-r), 1, M)]
         if check_nears(s, R, r, M) return s end
     end
     # return [rand(Uniform(x_min+r, x_max-r), 1, M); rand(Uniform(y_min+r, y_max-r), 1, M)]
@@ -190,58 +196,58 @@ function check_nears(s::Matrix{Float64}, R::Float64, r::Float64, M::Int64)
     return true
 end
 
-function random_move!(robo::Vector{robot}, mGP::Vector{GPBase}, GPtruth::GPBase)
-    M     = length(robo)
-    Dim   = length(robo[1].posn)
-    s_max = robo[1].pBnd.s_max
-    s     = zeros(Dim, M)
-    ang   = rand(Uniform(-π, π), 1, M)
+# function random_move!(robo::Vector{robot}, mGP::Vector{GPBase}, GPtruth::GPBase)
+#     M     = length(robo)
+#     Dim   = length(robo[1].posn)
+#     s_max = robo[1].pBnd.s_max
+#     s     = zeros(Dim, M)
+#     ang   = rand(Uniform(-π, π), 1, M)
 
-    while true
-        for i in 1:M
-            s[:,i] = robo[i].posn + s_max*[cos(ang[i]); sin(ang[i])]
-        end
+#     while true
+#         for i in 1:M
+#             s[:,i] = robo[i].posn + s_max*[cos(ang[i]); sin(ang[i])]
+#         end
     
-        if check_nears(s, robo[1].R, robo[1].r, M)
-            #     NeiB = find_nears(robo, M)
-            #     for i in 1:M # Exchange Previous Data
-            #         loca = Matrix{Float64}(undef, Dim, 0)
-            #         obsr = Vector{Float64}(undef, 0)
-            #         for j in NeiB[i]
-            #             for r in 1:M
-            #                 if robo[i].data[r,1][1]   == -1 && robo[j].data[r,1][1] != -1
-            #                     robo[i].data[r,1][1:2] =   robo[j].data[r,1][1:2]
-            #                     robo[i].data[r,1][3]   =   robo[j].data[r,1][3]
-            #                     loca = [loca  robo[j].data[r,1][1:2]]
-            #                     obsr = [obsr; robo[j].data[r,1][3]]
-            #                 end
-            #             end
-            #         end
-            #         append!(mGP[i], loca, obsr)
-            #         robo[i].loca = [robo[i].loca  loca]
-            #         robo[i].obsr = [robo[i].obsr; obsr]
-            #     end
+#         if check_nears(s, robo[1].R, robo[1].r, M)
+#             #     NeiB = find_nears(robo, M)
+#             #     for i in 1:M # Exchange Previous Data
+#             #         loca = Matrix{Float64}(undef, Dim, 0)
+#             #         obsr = Vector{Float64}(undef, 0)
+#             #         for j in NeiB[i]
+#             #             for r in 1:M
+#             #                 if robo[i].data[r,1][1]   == -1 && robo[j].data[r,1][1] != -1
+#             #                     robo[i].data[r,1][1:2] =   robo[j].data[r,1][1:2]
+#             #                     robo[i].data[r,1][3]   =   robo[j].data[r,1][3]
+#             #                     loca = [loca  robo[j].data[r,1][1:2]]
+#             #                     obsr = [obsr; robo[j].data[r,1][3]]
+#             #                 end
+#             #             end
+#             #         end
+#             #         append!(mGP[i], loca, obsr)
+#             #         robo[i].loca = [robo[i].loca  loca]
+#             #         robo[i].obsr = [robo[i].obsr; obsr]
+#             #     end
 
-            # for i in 1:M # Exchange Current Data
-            #     loca = Matrix{Float64}(undef, Dim, 0)
-            #     obsr = Vector{Float64}(undef, 0)
-            #     for j in [NeiB[i]; i]
-            #         robo[i].data[j,1][1:2] = robo[j].posn
-            #         robo[i].data[j,1][3]   = robo[j].meas
-            #         loca = [loca  robo[j].posn]
-            #         obsr = [obsr; robo[j].meas]
-            #     end
-            #     append!(mGP[i], loca, obsr)
-            #     robo[i].loca = [robo[i].loca  loca]
-            #     robo[i].obsr = [robo[i].obsr; obsr]
-            # end
+#             # for i in 1:M # Exchange Current Data
+#             #     loca = Matrix{Float64}(undef, Dim, 0)
+#             #     obsr = Vector{Float64}(undef, 0)
+#             #     for j in [NeiB[i]; i]
+#             #         robo[i].data[j,1][1:2] = robo[j].posn
+#             #         robo[i].data[j,1][3]   = robo[j].meas
+#             #         loca = [loca  robo[j].posn]
+#             #         obsr = [obsr; robo[j].meas]
+#             #     end
+#             #     append!(mGP[i], loca, obsr)
+#             #     robo[i].loca = [robo[i].loca  loca]
+#             #     robo[i].obsr = [robo[i].obsr; obsr]
+#             # end
 
-            for i in 1:M # Move to next postions randomly
-                robo[i].posn = s[:,i]
-                robo[i].meas = measure!(s[:,i], GPtruth)
-                append!(mGP[i], robo[i].posn, robo[i].meas)
-            end 
-            return s 
-        end
-    end
-end
+#             for i in 1:M # Move to next postions randomly
+#                 robo[i].posn = s[:,i]
+#                 robo[i].meas = measure!(s[:,i], GPtruth)
+#                 append!(mGP[i], robo[i].posn, robo[i].meas)
+#             end 
+#             return s 
+#         end
+#     end
+# end

@@ -1,12 +1,12 @@
 mutable struct polyBound
-    s_max::Float64 # constant of bound constraint
+    u_max::Vector{Float64} # constant of bound constraint
     x_min::Float64 
     x_max::Float64 # constant of bound constraint
     y_min::Float64 
     y_max::Float64 # constant of bound constraint
 
-    function polyBound(s_max::Float64, x_min::Float64, x_max::Float64, y_min::Float64, y_max::Float64)
-        return new(s_max, x_min, x_max, y_min, y_max)
+    function polyBound(u_max::Vector{Float64}, x_min::Float64, x_max::Float64, y_min::Float64, y_max::Float64)
+        return new(u_max, x_min, x_max, y_min, y_max)
     end
 end
 
@@ -35,11 +35,14 @@ mutable struct robot
     lℓ::Float64
     lσ2::Float64
 
-    rℓ2::Float64
+    rℓ2::Vector{Float64}
     rσ2::Float64
 
     σω2::Float64
     iCθ::Matrix{Float64}
+
+    θ::Float64
+    v::Float64
 
 
 
@@ -48,6 +51,9 @@ mutable struct robot
         obj         = new(index, τ, H, R, r, σ, pBnd)
         obj.posn    = x0  # Copy x0
         obj.time    = 0.
+
+        obj.θ = rand(1)[1]
+        obj.v = 0.
 
         obj.data    = [-ones(3) for i in 1:M, j in 1:L+1] # -1 means no data
         obj.loca    = Matrix{Float64}(undef, length(x0)+1, 0)
