@@ -2,17 +2,17 @@ push!(LOAD_PATH, ".")
 
 import Pkg
 using Pkg
-Pkg.activate(@__DIR__)
+Pkg.activate(joinpath(@__DIR__, ".."))
 
 using Optim, Random, Distributions, CSV, DataFrames, MAT, JLD2
 using Plots, Dates,  Statistics, Colors, ColorSchemes, StatsPlots
 using SharedArrays,  Ipopt, JuMP, GaussianProcesses, LinearAlgebra, Optim
 
-include("robots.jl")
-include("connectivity.jl")
-include("Tools.jl")
-include("computing.jl")
-include("pxALADIN.jl")
+include("../src/robots.jl")
+include("../src/connectivity.jl")
+include("../src/Tools.jl")
+include("../src/computing.jl")
+include("../src/pxALADIN.jl")
 
 
 ENV["GKSwstype"]="nul"
@@ -27,10 +27,10 @@ color = cgrad(:turbo, M, categorical = true, scale = :lin)
 
 ## Load data
 
-coorfr         = CSV.read("Manzano2022COMPAG_coordinates.csv", DataFrame, header = 1; select=[2,3])
-timefr         = CSV.read("Manzano2022COMPAG_data.csv", DataFrame, header = 1, select=[1])
-IDfr           = CSV.read("Manzano2022COMPAG_data.csv", DataFrame, header = 1; select=[2])
-datafr         = CSV.read("Manzano2022COMPAG_data.csv", DataFrame, header = 1, select=[3])
+coorfr         = CSV.read("data/Manzano2022COMPAG_coordinates.csv", DataFrame, header = 1; select=[2,3])
+timefr         = CSV.read("data/Manzano2022COMPAG_data.csv", DataFrame, header = 1, select=[1])
+IDfr           = CSV.read("data/Manzano2022COMPAG_data.csv", DataFrame, header = 1; select=[2])
+datafr         = CSV.read("data/Manzano2022COMPAG_data.csv", DataFrame, header = 1, select=[3])
 
 coor    = Matrix{Float64}(coorfr)
 timestr = Matrix{String}(timefr)
@@ -50,7 +50,7 @@ for i in 1:numData
     append!(arrTime[ID[i]], time[i])
 end
 Fig1 = plot(arrTime[10]*10,arrC[10], size=(1200,500), tickfontsize = 18, legendfontsize = 18,  linewidth=3, label = "Temperature (in Celsius scale)")
-png(Fig1, "Sensor 10")
+savefig(Fig1, "Sensor 10.pdf")
 
 # spaTem  = zeros(inDim,scaNum)
 # gpData  = zeros(scaNum)
@@ -99,7 +99,7 @@ for (index,t) in enumerate(timeScale)
     Fig0     = heatmap(X, Y,  temp, c = :turbo, tickfontsize = 14, xlims = (x_min,x_max), ylims = (y_min,y_max), 
                         size=(600,250), clims = (minimum(GPtruth.y)-2, maximum(GPtruth.y)), rightmargin=5Plots.mm)
     step = Int(round(t/Period))
-    step > 9 ? png(Fig0, "Figs/GTstep$step") : png(Fig0, "Figs/GTstep0$step")
+    step > 9 ? savefig(Fig0, "figs/GTstep$step.pdf") : savefig(Fig0, "figs/GTstep0$step.pdf")
 end
 
 
@@ -143,7 +143,7 @@ for k in 1:L
     pserSet = pserCon(robo)
 
     Fig, RMSE[k], var[k] = myPlot(robo, mGP, GPtruth, k*τ, NB, color)
-    k > 9 ? png(Fig, "Figs/step$k") : png(Fig, "Figs/step0$k")
+    k > 9 ? savefig(Fig, "figs/step$k.pdf") : savefig(Fig, "figs/step0$k.pdf")
 
     # Execute PxADMM
     @time Pred, ResE[:,:,k], Δv[:,k], Δθ[:,k] = dstbProxADLADIN!(robo, Pred, NB, pserSet, mGP, k*τ; MAX_ITER = MAX_ITER)
@@ -163,4 +163,4 @@ for i in [1;Vector(4:4:80)]
     g = boxplot!(["$i"],var[i],legend = false,size=(1100,450), xticks = :all, tickfontsize = 14)
 end
 display(g)
-png(g, "var_steps")
+savefig(g, "figs/var_steps.pdf")
